@@ -1,81 +1,57 @@
+use std::{collections::HashMap, marker::PhantomData};
+
 use crate::{
-    client::SessionMap,
-    handler::{Handler, HandlerFunc},
-    http::{
-        request::HttpRequest,
-        response::{ContentType, HttpResponse, StatusCode},
-    },
-    param::{Param, session::Session},
-    server::GlobalMap,
+    handler::{Handler, HandlerFunc, Service},
+    http::Method,
+    param::Param,
 };
 
-use std::{collections::HashMap, marker::PhantomData, pin::Pin, sync::Arc};
-
-pub struct Router {
-    routes: HashMap<Route, Box<dyn Handler>>,
-    fallback: Option<Box<dyn Handler>>,
+#[derive(Debug, Hash, Eq, PartialEq)]
+pub struct Route {
+    method: Method,
+    path: &'static str,
 }
 
-impl Router {
-    pub fn new() -> Self {
-        Router {
-            routes: HashMap::new(),
-            fallback: None,
+impl Route {
+    pub fn get(path: &'static str) -> Self {
+        Route {
+            method: Method::Get,
+            path,
         }
     }
 
-    pub fn set_fallback<H>(mut self, fallback: H) -> Self
-    where
-        H: Handler + 'static,
-    {
-        self.fallback = Some(Box::new(fallback));
-        self
+    pub fn post(path: &'static str) -> Self {
+        Route {
+            method: Method::Post,
+            path,
+        }
     }
+}
 
-    pub fn fallback(&self) -> Option<&Box<dyn Handler>> {
-        self.fallback.as_ref()
-    }
+#[derive(Default)]
+pub struct Router {
+    routes: HashMap<Route, Box<dyn Service>>,
+}
 
-    pub fn add_route<F, P, Fut>(mut self, route: Route, handler: F) -> Self
+impl Router {
+    pub fn route<H, P>(mut self, route: Route, handler: H) -> Self
     where
-        Fut: Future<Output = Response> + 'static + Send + Sync,
-        P: Param + 'static + Send + Sync,
-        F: Fn(P::Item<'_>) -> Fut + 'static + Send + Sync,
+        H: Handler<P::Item> + 'static,
+        P: Param,
     {
         self.routes.insert(
             route,
             Box::new(HandlerFunc {
                 f: handler,
-                _p: PhantomData,
+                _p: PhantomData::<P>,
             }),
         );
         self
     }
 
-    pub fn get_route(self: &Arc<Self>, route: Route) -> Option<&Box<dyn Handler>> {
-        self.routes.get(&route)
+    pub(crate) fn get_route(&self, route: &Route) -> Option<&dyn Service> {
+        self.routes.get(route).map(|s| &**s)
     }
 }
 
-#[derive(Hash, PartialEq, Eq)]
-pub enum Route {
-    Get(String),
-    Post(String),
-    Put(String),
-}
-
-pub struct Response {
-    pub content_type: ContentType,
-    pub body: String,
-    pub status: StatusCode,
-}
-
-impl Response {
-    pub fn html(body: String) -> Self {
-        Response {
-            content_type: ContentType::TextHtml,
-            body,
-            status: StatusCode::Ok,
-        }
-    }
-}
+pub struct Response {}

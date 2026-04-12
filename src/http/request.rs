@@ -13,7 +13,7 @@ impl Default for HttpRequest {
                 method: Method::Get,
                 path: String::new(),
                 protocol: String::new(),
-                misc: HashMap::new(),
+                headers: HashMap::new(),
             },
             content: String::new(),
         }
@@ -25,10 +25,10 @@ pub struct HttpRequestHeader {
     pub method: Method,
     pub path: String,
     pub protocol: String,
-    pub misc: HashMap<String, String>,
+    pub headers: HashMap<String, String>,
 }
 
-#[derive(Debug, PartialEq, strum::EnumString)]
+#[derive(Debug, PartialEq, strum::EnumString, Hash, Eq)]
 #[strum(serialize_all = "UPPERCASE")]
 pub enum Method {
     Get,
@@ -86,6 +86,9 @@ impl HttpRequestParser {
                         .map_err(|_| ParseError::InvalidHeader)?;
                     self.stage = ParseStage::Path;
                 }
+                // TODO:
+                // - Parsing into RequestPath
+                // - Handle arguments in path
                 ParseStage::Path => {
                     if !self.collect_until(' ') {
                         return Err(ParseError::InvalidHeader);
@@ -112,7 +115,7 @@ impl HttpRequestParser {
                     self.collect_until('\r');
                     let value = self.buffer.drain(..).collect();
                     self.next();
-                    self.request.header.misc.insert(key, value);
+                    self.request.header.headers.insert(key, value);
                 }
                 ParseStage::Content => {
                     self.skip_while(|ch| ['\r', '\n'].contains(&ch));
@@ -184,16 +187,16 @@ mod tests {
         let req_str =
             "GET /home HTTP/1.1\r\nHost: example.com\r\nAccept-Language: en\r\n\r\nHello World";
 
-        let mut misc = HashMap::new();
-        misc.insert(String::from("Host"), String::from("example.com"));
-        misc.insert(String::from("Accept-Language"), String::from("en"));
+        let mut headers = HashMap::new();
+        headers.insert(String::from("Host"), String::from("example.com"));
+        headers.insert(String::from("Accept-Language"), String::from("en"));
 
         let expected_req = HttpRequest {
             header: HttpRequestHeader {
                 method: Method::Get,
                 path: String::from("/home"),
                 protocol: String::from("HTTP/1.1"),
-                misc,
+                headers,
             },
             content: String::from("Hello World"),
         };
