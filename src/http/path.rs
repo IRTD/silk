@@ -1,4 +1,11 @@
-use std::{collections::HashMap, path::Path};
+use std::{
+    cell::Ref,
+    collections::{HashMap, VecDeque},
+    path::Path,
+    thread::current,
+};
+
+use tokio::sync::SemaphorePermit;
 
 use crate::{handler::Service, http::Method};
 
@@ -39,29 +46,35 @@ impl HttpNodeTree {
     pub fn get_node(
         &self,
         path: impl ToString,
-    ) -> Result<Option<(&HttpNode, PathVariables)>, SegmentParseError> {
+    ) -> Option<Result<(&HttpNode, PathVariables), SegmentParseError>> {
         let mut current_node = &self.root;
         let mut path_vars = PathVariables::new();
-        for segment in Segment::parse_path(path) {
-            let segment = segment?;
-            let matched = current_node.segment.matches(&segment, &mut path_vars);
-            if matched {
-                break;
+        let iter = Segment::parse_path(path);
+        match iter.first()? {
+            Ok(seg) => {
+                if &current_node.segment == seg {
+                    return Some(Ok((current_node, path_vars)));
+                }
             }
-
-            current_node = match current_node.get_leave(&segment) {
-                Some(node) => node,
-                None => return Ok(None),
-            };
+            Err(e) => return Some(Err(e.to_owned())),
         }
-        Ok(Some((current_node, path_vars)))
+
+        for seg in iter {
+            let seg = match seg {
+                Ok(s) => s,
+                Err(e) => return Some(Err(e)),
+            };
+            current_node = current_node.get_leave_path_vars(seg, &mut path_vars)?;
+        }
+
+        Some(Ok((current_node, path_vars)))
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub struct HttpNode {
     pub(crate) segment: Segment,
-    pub(crate) leaves: Vec<HttpNode>,
+    pub(crate) leaves: VecDeque<HttpNode>,
     pub(crate) methods: ServiceCollection,
 }
 
@@ -69,7 +82,7 @@ impl Default for HttpNode {
     fn default() -> Self {
         HttpNode {
             segment: Segment::Static("/".to_string()),
-            leaves: Vec::new(),
+            leaves: VecDeque::new(),
             methods: ServiceCollection::default(),
         }
     }
@@ -79,13 +92,30 @@ impl HttpNode {
     pub fn new(segment: Segment, methods: ServiceCollection) -> Self {
         HttpNode {
             segment,
-            leaves: Vec::new(),
+            leaves: VecDeque::new(),
             methods,
         }
     }
 
     pub fn get_leave(&self, segment: &Segment) -> Option<&HttpNode> {
         self.leaves.iter().find(|&seg| &seg.segment == segment)
+    }
+
+    pub fn get_leave_path_vars(
+        &self,
+        segment: Segment,
+        path_vars: &mut PathVariables,
+    ) -> Option<&HttpNode> {
+        for leave in &self.leaves {
+            if leave.segment.is_static() && leave.segment == segment {
+                return Some(leave);
+            } else if let Segment::Pattern { reference } = &leave.segment {
+                path_vars.insert(reference.clone(), segment.get_string()[1..].to_string());
+                return Some(leave);
+            }
+        }
+
+        None
     }
 
     pub fn get_leave_idx_or_add(&mut self, segment: Segment) -> usize {
@@ -95,8 +125,13 @@ impl HttpNode {
             }
             return idx;
         }
+        let segment_is_static = segment.is_static();
         let node = HttpNode::new(segment, ServiceCollection::default());
-        self.leaves.push(node);
+        if segment_is_static {
+            self.leaves.push_front(node);
+        } else {
+            self.leaves.push_back(node);
+        }
         self.leaves.len() - 1
     }
 }
@@ -154,7 +189,7 @@ pub enum Segment {
     Pattern { reference: String },
 }
 
-#[derive(Debug, thiserror::Error, PartialEq, Eq)]
+#[derive(Clone, Debug, thiserror::Error, PartialEq, Eq)]
 pub enum SegmentParseError {
     #[error("Segment begins with {0}, should begin with '/'")]
     InvalidStart(char),
@@ -204,14 +239,17 @@ impl Segment {
         }
     }
 
-    pub fn matches(&self, other: &Segment, path_variables: &mut PathVariables) -> bool {
-        match (self, &other) {
-            (Segment::Pattern { reference }, Segment::Static(path)) => {
-                path_variables.insert(reference.clone(), path.clone());
-                true
-            }
-            (Segment::Static(s), Segment::Static(other_s)) => s == other_s,
-            _ => false,
+    pub fn get_string(&self) -> &String {
+        match self {
+            Segment::Static(s) => s,
+            Segment::Pattern { reference } => reference,
+        }
+    }
+
+    pub fn is_static(&self) -> bool {
+        match self {
+            Segment::Static(_) => true,
+            Segment::Pattern { reference } => false,
         }
     }
 
@@ -303,11 +341,13 @@ mod tests {
                     segment: Segment::Static("/home".to_string()),
                     leaves: vec![HttpNode {
                         segment: Segment::Static("/user".to_string()),
-                        leaves: Vec::new(),
+                        leaves: VecDeque::new(),
                         methods: ServiceCollection::default(),
-                    }],
+                    }]
+                    .into(),
                     methods: ServiceCollection::default(),
-                }],
+                }]
+                .into(),
                 methods: ServiceCollection::default(),
             },
         };
@@ -328,11 +368,13 @@ mod tests {
                     segment: Segment::Static("/home".to_string()),
                     leaves: vec![HttpNode {
                         segment: Segment::Static("/user".to_string()),
-                        leaves: Vec::new(),
+                        leaves: VecDeque::new(),
                         methods: ServiceCollection::default(),
-                    }],
+                    }]
+                    .into(),
                     methods: ServiceCollection::default(),
-                }],
+                }]
+                .into(),
                 methods: ServiceCollection::default(),
             },
         };
@@ -360,7 +402,7 @@ mod tests {
         );
         let expected = HttpNode {
             segment: Segment::Static("/user".to_string()),
-            leaves: Vec::new(),
+            leaves: VecDeque::new(),
             methods: ServiceCollection::default(),
         };
         let (node, vars) = tree.get_node(input).unwrap().unwrap();
@@ -381,14 +423,51 @@ mod tests {
             segment: Segment::Pattern {
                 reference: String::from("user"),
             },
-            leaves: Vec::new(),
+            leaves: VecDeque::new(),
             methods: ServiceCollection::default(),
         };
         let mut expected_path_vars = PathVariables::new();
         expected_path_vars.insert("user".to_string(), "Steve".to_string());
         let res = tree.get_node(incoming_input);
-        let res = tree.get_node(incoming_input);
 
-        assert_eq!(Ok(Some((&expected, expected_path_vars))), res);
+        assert_eq!(Some(Ok((&expected, expected_path_vars))), res);
+    }
+
+    #[test]
+    fn tree_prefer_static_path_over_pattern() {
+        let register_input_pattern = "/home/{user}";
+        let register_input_static = "/home/valia";
+        let incoming_pattern = "/home/steve";
+        let mut tree = HttpNodeTree::new();
+        assert!(
+            tree.add_service(register_input_pattern, ServiceCollection::default())
+                .is_ok()
+        );
+        assert!(
+            tree.add_service(register_input_static, ServiceCollection::default())
+                .is_ok()
+        );
+        let expected = HttpNode {
+            segment: Segment::Static("/valia".to_string()),
+            leaves: VecDeque::new(),
+            methods: ServiceCollection::default(),
+        };
+        let expected_path_vars = PathVariables::new();
+
+        let res = tree.get_node(register_input_static);
+        assert_eq!(Some(Ok((&expected, expected_path_vars))), res);
+
+        let expected = HttpNode {
+            segment: Segment::Pattern {
+                reference: String::from("user"),
+            },
+            leaves: VecDeque::new(),
+            methods: ServiceCollection::default(),
+        };
+        let mut expected_path_vars = PathVariables::new();
+        expected_path_vars.insert("user".to_string(), "steve".to_string());
+
+        let res = tree.get_node(incoming_pattern);
+        assert_eq!(Some(Ok((&expected, expected_path_vars))), res);
     }
 }
