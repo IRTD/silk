@@ -14,6 +14,7 @@ pub mod response;
 
 pub use request::Method;
 
+#[derive(Debug)]
 pub struct HttpStream {
     tcp: TcpStream,
 }

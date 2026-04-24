@@ -1,6 +1,8 @@
+use crate::{handler::HandlerResources, http::path::PathVariables};
+
 pub trait Param: 'static + Send + Sync {
     type Item;
-    fn fetch() -> Self::Item;
+    fn fetch(resources: &HandlerResources<'_>) -> Self::Item;
 }
 
 macro_rules! param_tuple {
@@ -10,8 +12,8 @@ macro_rules! param_tuple {
         {
             type Item = ($($param::Item,)*);
             #[allow(clippy::unused_unit)]
-            fn fetch() -> Self::Item {
-                ($($param::fetch(),)*)
+            fn fetch(resources: &HandlerResources<'_>) -> Self::Item {
+                ($($param::fetch(resources),)*)
             }
         }
     };
@@ -22,17 +24,3 @@ param_tuple! { A }
 param_tuple! { A B }
 param_tuple! { A B C }
 param_tuple! { A B C D }
-
-impl Param for String {
-    type Item = String;
-    fn fetch() -> Self::Item {
-        String::from("Fetched")
-    }
-}
-
-impl Param for usize {
-    type Item = usize;
-    fn fetch() -> Self::Item {
-        12
-    }
-}

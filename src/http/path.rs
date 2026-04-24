@@ -1,13 +1,15 @@
 use std::{
-    cell::Ref,
     collections::{HashMap, VecDeque},
+    marker::PhantomData,
     path::Path,
-    thread::current,
 };
 
-use tokio::sync::SemaphorePermit;
-
-use crate::{handler::Service, http::Method};
+use crate::{
+    handler::{Handler, HandlerFunc, Service},
+    http::Method,
+    param::Param,
+    router::Response,
+};
 
 pub type PathVariables = HashMap<String, String>;
 
@@ -158,19 +160,21 @@ impl PartialEq for ServiceCollection {
 }
 
 impl ServiceCollection {
-    pub fn set_get<S>(mut self, service: S) -> Self
+    pub fn set_get<F, P>(mut self, service: F) -> Self
     where
-        S: Service + 'static,
+        F: Handler<P::Item> + Send + Sync + 'static,
+        P: Param,
     {
-        self.get = Some(Box::new(service));
+        self.get = Some(Box::new(HandlerFunc::<_, P>::new(service)));
         self
     }
 
-    pub fn set_post<S>(mut self, service: S) -> Self
+    pub fn set_post<F, P>(mut self, service: F) -> Self
     where
-        S: Service + 'static,
+        F: Handler<P::Item> + Send + Sync + 'static,
+        P: Param,
     {
-        self.post = Some(Box::new(service));
+        self.post = Some(Box::new(HandlerFunc::<_, P>::new(service)));
         self
     }
 
@@ -469,5 +473,24 @@ mod tests {
 
         let res = tree.get_node(incoming_pattern);
         assert_eq!(Some(Ok((&expected, expected_path_vars))), res);
+    }
+
+    #[test]
+    fn tree_return_root() {
+        let dummy_register = "/home";
+        let mut tree = HttpNodeTree::new();
+        assert!(
+            tree.add_service(dummy_register, ServiceCollection::default())
+                .is_ok()
+        );
+
+        let mut expected = HttpNode::default();
+        expected.get_leave_idx_or_add(Segment::Static("/home".to_string()));
+        let expected_path_vars = PathVariables::new();
+
+        assert_eq!(
+            Some(Ok((&expected, expected_path_vars))),
+            tree.get_node("/")
+        );
     }
 }
