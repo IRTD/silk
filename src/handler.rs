@@ -14,7 +14,7 @@ pub trait Service: Send + Sync {
 
 impl<F, P> Service for HandlerFunc<F, P>
 where
-    F: Handler<P::Item> + Send + Sync,
+    F: Handler<P> + Send + Sync,
     P: Param,
 {
     fn run(&self, path_vars: HandlerResources<'_>) -> BoxedHandlerOutput {
@@ -29,7 +29,7 @@ pub struct HandlerFunc<F, P> {
 
 impl<F, P> HandlerFunc<F, P>
 where
-    F: Handler<P::Item> + Send + Sync,
+    F: Handler<P> + Send + Sync,
     P: Param,
 {
     pub fn new(f: F) -> Self {

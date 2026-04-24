@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 pub mod client;
 pub mod error_handler;
 pub mod handler;

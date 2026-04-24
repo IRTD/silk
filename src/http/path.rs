@@ -162,7 +162,7 @@ impl PartialEq for ServiceCollection {
 impl ServiceCollection {
     pub fn set_get<F, P>(mut self, service: F) -> Self
     where
-        F: Handler<P::Item> + Send + Sync + 'static,
+        F: Handler<P> + Send + Sync + 'static,
         P: Param,
     {
         self.get = Some(Box::new(HandlerFunc::<_, P>::new(service)));
@@ -171,7 +171,7 @@ impl ServiceCollection {
 
     pub fn set_post<F, P>(mut self, service: F) -> Self
     where
-        F: Handler<P::Item> + Send + Sync + 'static,
+        F: Handler<P> + Send + Sync + 'static,
         P: Param,
     {
         self.post = Some(Box::new(HandlerFunc::<_, P>::new(service)));
