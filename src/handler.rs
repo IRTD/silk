@@ -2,7 +2,7 @@ use std::{marker::PhantomData, pin::Pin};
 
 use crate::{http::path::PathVariables, param::Param, router::Response};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct HandlerResources<'a> {
     pub path_vars: Option<&'a PathVariables>,
     pub request_body: Option<&'a String>,

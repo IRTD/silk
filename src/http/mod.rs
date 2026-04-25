@@ -35,7 +35,6 @@ impl HttpStream {
     }
 
     pub async fn send_response(&mut self, response: HttpResponse) -> Result<(), HttpStreamError> {
-        dbg!(&response);
         self.tcp.write_all(response.to_string().as_bytes()).await?;
         Ok(())
     }

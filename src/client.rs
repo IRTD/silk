@@ -44,6 +44,7 @@ impl Client {
             };
             let http_resp = response.into_http_response(http_req);
 
+            debug!(response = ?http_resp);
             self.stream.send_response(http_resp).await?;
         }
     }

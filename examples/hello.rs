@@ -6,6 +6,7 @@ use silk::{
     server::Server,
 };
 use tokio::net::TcpListener;
+use tracing_subscriber::prelude::*;
 
 struct User(String);
 
@@ -24,7 +25,9 @@ impl Param for User {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer().pretty())
+        .init();
     let router = Router::default()
         .route(
             "/hello/{user}",
