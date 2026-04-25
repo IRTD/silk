@@ -1,7 +1,8 @@
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::{AsyncReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
 };
+use tracing::{debug, instrument};
 
 use crate::http::{
     request::{HttpRequest, HttpRequestParser},
@@ -16,16 +17,16 @@ pub use request::Method;
 
 #[derive(Debug)]
 pub struct HttpStream {
-    tcp: TcpStream,
+    tcp: BufReader<TcpStream>,
 }
 
 impl HttpStream {
     pub fn from_tcpstream(tcp: TcpStream) -> Self {
-        HttpStream { tcp }
+        HttpStream {
+            tcp: BufReader::new(tcp),
+        }
     }
 
-    // TODO:
-    //  - Recursive Read instead of one time
     pub async fn next_request(&mut self) -> Result<HttpRequest, HttpStreamError> {
         let mut buffer = [0; 4096];
         let read = self.tcp.read(&mut buffer).await?;
