@@ -2,7 +2,6 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
 };
-use tracing::{debug, instrument};
 
 use crate::http::{
     request::{HttpRequest, HttpRequestParser},

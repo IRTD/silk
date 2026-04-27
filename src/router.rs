@@ -1,15 +1,11 @@
-use std::{collections::HashMap, marker::PhantomData};
-
 use crate::{
     error_handler::ErrorHandler,
     handler::Service,
     http::{
-        Method,
         path::{HttpNodeTree, PathVariables, SegmentParseError, ServiceCollection},
         request::HttpRequest,
         response::{ContentType, HttpResponse, HttpResponseHeader, StatusCode},
     },
-    param::Param,
 };
 
 #[derive(Default, Debug)]

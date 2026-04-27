@@ -2,7 +2,7 @@ pub mod global;
 pub mod path;
 pub mod request;
 
-use crate::{handler::HandlerResources, http::path::PathVariables};
+use crate::handler::HandlerResources;
 
 pub trait Param: 'static + Send + Sync {
     fn fetch(resources: &HandlerResources<'_>) -> Self;
@@ -13,7 +13,7 @@ macro_rules! param_tuple {
         impl<$($param,)*> Param for ($($param,)*)
         where $($param: Param,)*
         {
-            #[allow(clippy::unused_unit)]
+            #[allow(clippy::unused_unit, unused_variables)]
             fn fetch(resources: &HandlerResources<'_>) -> Self{
                 ($($param::fetch(resources),)*)
             }

@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use tokio::{net::TcpListener, sync::RwLock};
+use tokio::net::TcpListener;
 use tracing::{Level, event, instrument};
 
 use crate::{client::Client, http::HttpStream, router::Router};
@@ -66,6 +66,5 @@ impl Server {
 
             tokio::spawn(client.handle());
         }
-        Ok(())
     }
 }

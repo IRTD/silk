@@ -1,10 +1,10 @@
-use tracing::{Level, debug, event, instrument};
+use tracing::{debug, instrument};
 
 use crate::{
     handler::HandlerResources,
     http::{
         HttpStream, HttpStreamError, Method,
-        path::{PathVariables, SegmentParseError, ServiceCollection},
+        path::{SegmentParseError, ServiceCollection},
     },
     router::{Response, Router},
     server::GlobalMap,

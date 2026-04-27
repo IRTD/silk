@@ -1,14 +1,8 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    marker::PhantomData,
-    path::Path,
-};
+use std::collections::{HashMap, VecDeque};
 
 use crate::{
     handler::{Handler, HandlerFunc, Service},
-    http::Method,
     param::Param,
-    router::Response,
 };
 
 pub type PathVariables = HashMap<String, String>;
@@ -155,7 +149,7 @@ impl std::fmt::Debug for ServiceCollection {
 }
 
 impl PartialEq for ServiceCollection {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, _other: &Self) -> bool {
         true
     }
 }
@@ -254,7 +248,7 @@ impl Segment {
     pub fn is_static(&self) -> bool {
         match self {
             Segment::Static(_) => true,
-            Segment::Pattern { reference } => false,
+            Segment::Pattern { reference: _ } => false,
         }
     }
 
