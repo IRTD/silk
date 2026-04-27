@@ -131,10 +131,11 @@ impl HttpNode {
         let node = HttpNode::new(segment, ServiceCollection::default());
         if segment_is_static {
             self.leaves.push_front(node);
+            return 0;
         } else {
             self.leaves.push_back(node);
+            return self.leaves.len() - 1;
         }
-        self.leaves.len() - 1
     }
 }
 

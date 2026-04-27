@@ -7,6 +7,7 @@ use crate::{
         path::{PathVariables, SegmentParseError, ServiceCollection},
     },
     router::{Response, Router},
+    server::GlobalMap,
 };
 use std::sync::Arc;
 
@@ -14,6 +15,7 @@ use std::sync::Arc;
 pub struct Client {
     pub(crate) router: Arc<Router>,
     pub(crate) stream: HttpStream,
+    pub(crate) global: Arc<GlobalMap>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -30,8 +32,7 @@ impl Client {
         loop {
             let http_req = self.stream.next_request().await?;
             debug!(request = ?http_req);
-            let mut resources = HandlerResources::default();
-            resources.request_body = Some(&http_req.content);
+            let mut resources = HandlerResources::new(&http_req, &self.global);
 
             let response = match self.router.get_route(&http_req.header.path) {
                 Some(res) => {

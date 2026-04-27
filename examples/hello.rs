@@ -1,25 +1,24 @@
 use silk::{
-    handler::HandlerResources,
     http::path::ServiceCollection,
-    param::Param,
+    param::{
+        global::Global,
+        path::{Path, PathExtractor},
+        request::{Headers, Request},
+    },
     router::{Response, Router},
-    server::Server,
+    server::{GlobalMap, Server},
 };
 use tokio::net::TcpListener;
 use tracing_subscriber::prelude::*;
 
-struct User(String);
+pub struct User(String);
+impl PathExtractor for User {
+    fn name() -> &'static str {
+        "user"
+    }
 
-impl Param for User {
-    fn fetch(resources: &HandlerResources<'_>) -> Self {
-        User(
-            resources
-                .path_vars
-                .unwrap()
-                .get("user")
-                .unwrap()
-                .to_string(),
-        )
+    fn parse(input: Option<&String>) -> Self {
+        User(input.unwrap().to_owned())
     }
 }
 
@@ -28,16 +27,31 @@ async fn main() {
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer().pretty())
         .init();
+
     let router = Router::default()
         .route(
             "/hello/{user}",
-            ServiceCollection::default().set_get::<_, (User,)>(hello_page),
+            ServiceCollection::default().set_get::<_, (Path<User>, Global<String>)>(hello_page),
         )
-        .unwrap();
+        .route(
+            "/headers",
+            ServiceCollection::default().set_get::<_, (Request<Headers>,)>(header_show),
+        );
+
+    let global = GlobalMap::default().add_resource(String::from("Welcome"));
     let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
-    Server::new(router).run(listener).await.unwrap();
+
+    Server::new(router)
+        .with_global(global)
+        .run(listener)
+        .await
+        .unwrap();
 }
 
-async fn hello_page(user: User) -> Response {
-    Response::html(format!("Hello, {}!", user.0))
+async fn hello_page(user: Path<User>, welcome_msg: Global<String>) -> Response {
+    Response::html(format!("{}, {}!", *welcome_msg, user.0))
+}
+
+async fn header_show(headers: Request<Headers>) -> Response {
+    Response::html(format!("{:#?}", *headers))
 }

@@ -1,11 +1,27 @@
 use std::{marker::PhantomData, pin::Pin};
 
-use crate::{http::path::PathVariables, param::Param, router::Response};
+use crate::{
+    http::{path::PathVariables, request::HttpRequest},
+    param::Param,
+    router::Response,
+    server::GlobalMap,
+};
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct HandlerResources<'a> {
     pub path_vars: Option<&'a PathVariables>,
-    pub request_body: Option<&'a String>,
+    pub request: &'a HttpRequest,
+    pub global: &'a GlobalMap,
+}
+
+impl<'a> HandlerResources<'a> {
+    pub fn new(request: &'a HttpRequest, global: &'a GlobalMap) -> Self {
+        HandlerResources {
+            path_vars: None,
+            request,
+            global,
+        }
+    }
 }
 
 pub trait Service: Send + Sync {

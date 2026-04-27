@@ -26,13 +26,9 @@ impl Router {
         }
     }
 
-    pub fn route(
-        mut self,
-        path: impl ToString,
-        services: ServiceCollection,
-    ) -> Result<Self, SegmentParseError> {
-        self.routes.add_service(path, services)?;
-        Ok(self)
+    pub fn route(mut self, path: impl ToString, services: ServiceCollection) -> Self {
+        self.routes.add_service(path, services).unwrap();
+        self
     }
 
     pub fn not_found(&self) -> &Box<dyn Service> {

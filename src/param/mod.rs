@@ -1,3 +1,7 @@
+pub mod global;
+pub mod path;
+pub mod request;
+
 use crate::{handler::HandlerResources, http::path::PathVariables};
 
 pub trait Param: 'static + Send + Sync {
