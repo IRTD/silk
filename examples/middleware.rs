@@ -2,7 +2,6 @@ use std::{any::TypeId, ops::AddAssign};
 
 use silk::{
     get,
-    middleware::Middleware,
     param::{
         Param,
         global::Global,
@@ -53,10 +52,15 @@ async fn main() {
 
     Server::new(router)
         .add_resource(Mutex::new(Counter(0)))
-        // .add_middleware(counter_middleware)
+        .add_middleware(counter_middleware)
         .run(listener)
         .await
         .unwrap();
+}
+
+async fn counter_middleware(counter: Global<Mutex<Counter>>) -> Response {
+    counter.lock().await.0.add_assign(1);
+    Response::ok()
 }
 
 async fn greeting(path: Path<Name>) -> Response {

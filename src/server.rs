@@ -12,7 +12,6 @@ use crate::{
     client::Client,
     handler::{Handler, HandlerFunc, Service},
     http::HttpStream,
-    middleware::Middleware,
     param::Param,
     router::Router,
 };
@@ -39,7 +38,7 @@ impl GlobalMap {
 pub struct Server {
     router: Router,
     global: GlobalMap,
-    middleware: Vec<Middleware>,
+    middleware: Vec<Box<dyn Service>>,
 }
 
 impl Server {
@@ -59,8 +58,13 @@ impl Server {
         self
     }
 
-    pub fn add_middleware(mut self, middleware: Middleware) -> Self {
-        self.middleware.push(middleware);
+    pub fn add_middleware<F, P>(mut self, middleware: F) -> Self
+    where
+        F: Handler<P> + 'static + Send + Sync,
+        P: Param,
+    {
+        self.middleware
+            .push(Box::new(HandlerFunc::<_, P>::new(middleware)));
         self
     }
 

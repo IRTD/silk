@@ -4,7 +4,6 @@ pub mod client;
 pub mod error_handler;
 pub mod handler;
 pub mod http;
-pub mod middleware;
 pub mod param;
 pub mod router;
 pub mod server;

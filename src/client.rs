@@ -7,7 +7,6 @@ use crate::{
         path::{PathVariables, SegmentParseError, ServiceCollection},
         response::StatusCode,
     },
-    middleware::Middleware,
     router::{Response, Router},
     server::GlobalMap,
 };
@@ -17,7 +16,7 @@ pub struct Client {
     pub(crate) router: Arc<Router>,
     pub(crate) stream: HttpStream,
     pub(crate) global: Arc<GlobalMap>,
-    pub(crate) middleware: Arc<Vec<Middleware>>,
+    pub(crate) middleware: Arc<Vec<Box<dyn Service>>>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -48,7 +47,7 @@ impl Client {
             let mut resources = HandlerResources::new(http_req, &self.global, path_vars);
 
             for middle in self.middleware.iter() {
-                let response = middle.run.run(&mut resources).await;
+                let response = middle.run(&mut resources).await;
                 if StatusCode::Ok != response.status {
                     let http_resp = response.into_http_response(resources.request);
                     self.stream.send_response(http_resp).await?;
@@ -57,6 +56,7 @@ impl Client {
             }
 
             let response = service.run(&mut resources).await;
+
             let http_resp = response.into_http_response(resources.request);
 
             debug!(response = ?http_resp);
