@@ -1,5 +1,3 @@
-use std::{any::TypeId, ops::AddAssign};
-
 use silk::{
     get,
     param::{
@@ -10,6 +8,7 @@ use silk::{
     router::{Response, Router},
     server::Server,
 };
+use std::{any::TypeId, ops::AddAssign};
 use tokio::{net::TcpListener, sync::Mutex};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
