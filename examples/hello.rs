@@ -1,12 +1,12 @@
 use silk::{
-    http::path::ServiceCollection,
+    get,
     param::{
         global::Global,
         path::{Path, PathExtractor},
         request::{Headers, Request},
     },
     router::{Response, Router},
-    server::{GlobalMap, Server},
+    server::Server,
 };
 use tokio::net::TcpListener;
 use tracing_subscriber::prelude::*;
@@ -29,14 +29,8 @@ async fn main() {
         .init();
 
     let router = Router::default()
-        .route(
-            "/hello/{user}",
-            ServiceCollection::default().set_get::<_, (Path<User>, Global<String>)>(hello_page),
-        )
-        .route(
-            "/headers",
-            ServiceCollection::default().set_get::<_, (Request<Headers>,)>(header_show),
-        );
+        .route("/hello/{user}", get(hello_page))
+        .route("/headers", get(header_show));
 
     let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
 

@@ -27,6 +27,10 @@ impl Router {
         self
     }
 
+    pub fn route_ref(&mut self, path: impl ToString, services: ServiceCollection) {
+        self.routes.add_service(path, services).unwrap();
+    }
+
     pub fn not_found(&self) -> &Box<dyn Service> {
         &self.error_handler.not_found
     }
