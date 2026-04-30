@@ -1,7 +1,7 @@
 use std::{
     any::{Any, TypeId},
     marker::PhantomData,
-    ops::Deref,
+    ops::{Deref, DerefMut},
     sync::Arc,
 };
 
@@ -13,7 +13,7 @@ pub struct Global<T> {
 }
 
 impl<T: Send + Sync + 'static> Param for Global<T> {
-    fn fetch(resources: &crate::handler::HandlerResources<'_>) -> Self {
+    fn fetch(resources: &mut crate::handler::HandlerResources<'_>) -> Self {
         let erased = resources.global.get(&TypeId::of::<T>()).cloned().unwrap();
         Global {
             erased,

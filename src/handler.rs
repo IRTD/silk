@@ -9,15 +9,15 @@ use crate::{
 
 #[derive(Debug)]
 pub struct HandlerResources<'a> {
-    pub path_vars: Option<&'a PathVariables>,
-    pub request: &'a HttpRequest,
+    pub path_vars: PathVariables,
+    pub request: HttpRequest,
     pub global: &'a GlobalMap,
 }
 
 impl<'a> HandlerResources<'a> {
-    pub fn new(request: &'a HttpRequest, global: &'a GlobalMap) -> Self {
+    pub fn new(request: HttpRequest, global: &'a GlobalMap, path_vars: PathVariables) -> Self {
         HandlerResources {
-            path_vars: None,
+            path_vars,
             request,
             global,
         }
@@ -25,7 +25,7 @@ impl<'a> HandlerResources<'a> {
 }
 
 pub trait Service: Send + Sync {
-    fn run(&self, path_vars: HandlerResources<'_>) -> BoxedHandlerOutput;
+    fn run(&self, resources: &mut HandlerResources<'_>) -> BoxedHandlerOutput;
 }
 
 impl<F, P> Service for HandlerFunc<F, P>
@@ -33,8 +33,8 @@ where
     F: Handler<P> + Send + Sync,
     P: Param,
 {
-    fn run(&self, path_vars: HandlerResources<'_>) -> BoxedHandlerOutput {
-        self.f.call(P::fetch(&path_vars))
+    fn run(&self, resources: &mut HandlerResources<'_>) -> BoxedHandlerOutput {
+        self.f.call(P::fetch(resources))
     }
 }
 

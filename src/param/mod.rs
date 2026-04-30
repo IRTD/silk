@@ -5,7 +5,7 @@ pub mod request;
 use crate::handler::HandlerResources;
 
 pub trait Param: 'static + Send + Sync {
-    fn fetch(resources: &HandlerResources<'_>) -> Self;
+    fn fetch(resources: &mut HandlerResources<'_>) -> Self;
 }
 
 macro_rules! param_tuple {
@@ -14,7 +14,7 @@ macro_rules! param_tuple {
         where $($param: Param,)*
         {
             #[allow(clippy::unused_unit, unused_variables)]
-            fn fetch(resources: &HandlerResources<'_>) -> Self{
+            fn fetch(resources: &mut HandlerResources<'_>) -> Self{
                 ($($param::fetch(resources),)*)
             }
         }

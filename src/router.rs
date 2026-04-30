@@ -43,10 +43,10 @@ impl Router {
 
 #[derive(Debug)]
 pub struct Response {
-    status: StatusCode,
+    pub status: StatusCode,
     content_type: ContentType,
-    reason_phrase: String,
-    body: String,
+    pub reason_phrase: String,
+    pub body: String,
 }
 
 impl Response {
@@ -56,6 +56,15 @@ impl Response {
             content_type: ContentType::TextHtml,
             reason_phrase: String::new(),
             body: body.to_string(),
+        }
+    }
+
+    pub fn ok() -> Self {
+        Response {
+            status: StatusCode::Ok,
+            content_type: ContentType::TextPlain,
+            reason_phrase: String::new(),
+            body: String::new(),
         }
     }
 

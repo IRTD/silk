@@ -38,11 +38,10 @@ async fn main() {
             ServiceCollection::default().set_get::<_, (Request<Headers>,)>(header_show),
         );
 
-    let global = GlobalMap::default().add_resource(String::from("Welcome"));
     let listener = TcpListener::bind("127.0.0.1:8080").await.unwrap();
 
     Server::new(router)
-        .with_global(global)
+        .add_resource(String::from("Welcome"))
         .run(listener)
         .await
         .unwrap();

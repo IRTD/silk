@@ -2,6 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::{
     handler::{Handler, HandlerFunc, Service},
+    http::Method,
     param::Param,
 };
 
@@ -171,6 +172,14 @@ impl ServiceCollection {
     {
         self.post = Some(Box::new(HandlerFunc::<_, P>::new(service)));
         self
+    }
+
+    pub fn method(&self, method: &Method) -> Option<&Box<dyn Service + 'static>> {
+        match method {
+            Method::Get => self.get(),
+            Method::Post => self.post(),
+            _ => todo!(),
+        }
     }
 
     pub fn get(&self) -> Option<&Box<dyn Service + 'static>> {

@@ -7,8 +7,8 @@ impl<T> Param for Request<T>
 where
     T: RequestExtractor + Send + Sync + 'static,
 {
-    fn fetch(resources: &crate::handler::HandlerResources<'_>) -> Self {
-        Request(T::from_request(resources.request))
+    fn fetch(resources: &mut crate::handler::HandlerResources<'_>) -> Self {
+        Request(T::from_request(&resources.request))
     }
 }
 
